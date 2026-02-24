@@ -9,7 +9,7 @@ jobs_url = "https://remotive.com/api/remote-jobs"
 
 # Filters
 KEYWORDS = ["python", "ai", "data"]          # keyword filter (case-insensitive)
-CATEGORY_FILTER = ""                         # example: "Software Development" (leave "" for no filter)
+CATEGORY_FILTER = ""                         # Double check that this doesnt throw an error, example: "Software Development" (leave "" for no filter)
 MAX_DAYS_OLD = 30                            # recent posting filter (keep jobs posted within last N days)
 
 # Scoring Weights (should add up to 1.0)
@@ -89,7 +89,7 @@ def recency_score(days_old):
     if days_old > RECENCY_CUTOFF_DAYS:
         return 0
 
-    r = 1 - (days_old / RECENCY_SLOPE_DENOM)
+    r = 1 - (days_old / RECENCY_SLOPE_DENOM) # see if we can tate out the recency slope and if it effects the outpui
     return max(0, r)
 
 
