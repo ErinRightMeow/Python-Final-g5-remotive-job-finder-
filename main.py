@@ -22,14 +22,15 @@ WEIGHT_SALARY = 0.10
 # R = 0.5 when 7 days old
 # R = 0 when older than 7 days
 RECENCY_CUTOFF_DAYS = 7
-RECENCY_SLOPE_DENOM = 14  # makes R=0.5 at day 7
+RECENCY_SLOPE_DENOM = 14  # makes R=0.5 at day 7 by dividing the 7/14 to get .5
 
 OUTPUT_PATH = "./spreadsheets/remotive_jobs_scored.xlsx"
 # ----------------------------
 # HELPER FUNCTIONS
 # ----------------------------
+#note that using """ as a multiline string to make in code documentation
 
-#using a multiline string to make in code documentation
+#Concerting all dates to timezone.UTC to be able to calculation recency 
 def parse_iso_date(date_str):
     """ 
     Remotive publication_date is typically ISO 8601.
@@ -54,11 +55,11 @@ def days_since(posted_dt):
     If posted_dt is None, treat as old.
     """
     if posted_dt is None:
-        return 9999
+        return 9999 #treating no date as super old
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(timezone.utc) # using the date now in same format as converted data from API
     delta = now - posted_dt.astimezone(timezone.utc)
-    return delta.days
+    return delta.days #difference in days from posted to now
 
 
 def keyword_match_count(text, keywords):
@@ -68,8 +69,8 @@ def keyword_match_count(text, keywords):
     """
     if text is None:
         text = ""
-
-    text_lower = text.lower()
+#making case insensitive by converting keywords from API to lower case 
+    text_lower = text.lower() #note on putting this outside the if loop so that it lowers all keyword and all job text to lower case once
     count = 0
 
     for kw in keywords:
@@ -77,7 +78,6 @@ def keyword_match_count(text, keywords):
             count += 1
 
     return count
-
 
 def recency_score(days_old):
     """
@@ -89,7 +89,7 @@ def recency_score(days_old):
     if days_old > RECENCY_CUTOFF_DAYS:
         return 0
 
-    r = 1 - (days_old / RECENCY_SLOPE_DENOM) # see if we can tate out the recency slope and if it effects the outpui
+    r = 1 - (days_old / RECENCY_SLOPE_DENOM) 
     return max(0, r)
 
 
@@ -214,7 +214,7 @@ print("Total jobs after filters:", len(filtered_jobs))
 
 # Sort by job_score descending
 filtered_jobs.sort(key=lambda x: x["job_score"], reverse=True)
-
+# for each item x in the list, use its job score value as its sorting value
 
 # ----------------------------
 # EXCEL OUTPUT (OpenPyXL)
