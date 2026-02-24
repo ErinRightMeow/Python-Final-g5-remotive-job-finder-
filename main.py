@@ -258,11 +258,13 @@ for row, job in enumerate(filtered_jobs, 2):
     ws_jobs.cell(row=row, column=10, value=job["salary_score"])
     ws_jobs.cell(row=row, column=11, value=job["job_score"])
 
-    # Hyperlink
-    link_cell = ws_jobs.cell(row=row, column=12, value="View Job")
-    if job["url"] != "":
-        link_cell.hyperlink = job["url"]
-        link_cell.style = "Hyperlink"
+    # Make the links to the job listing actual hyperlinks
+url_value = job.get("url", "")
+link_cell = ws_jobs.cell(row=row, column=12, value=str(url_value))
+
+if url_value:
+    link_cell.hyperlink = url_value
+    link_cell.style = "Hyperlink"
 
 # Column widths (simple)
 for col in range(1, len(headers) + 1):
@@ -271,58 +273,6 @@ for col in range(1, len(headers) + 1):
 
 ws_jobs.column_dimensions["A"].width = 45  # Title wider
 ws_jobs.column_dimensions["L"].width = 15  # Link
-
-
-# Summary sheet
-ws_summary = wb.create_sheet("Summary")
-
-ws_summary["A1"] = "Remote Job Finder Summary"
-
-ws_summary["A3"] = "API Endpoint"
-ws_summary["B3"] = jobs_url
-
-ws_summary["A5"] = "Keywords"
-ws_summary["B5"] = ", ".join(KEYWORDS)
-
-ws_summary["A6"] = "Category Filter"
-ws_summary["B6"] = CATEGORY_FILTER if CATEGORY_FILTER != "" else "(none)"
-
-ws_summary["A7"] = "Max Days Old (Filter)"
-ws_summary["B7"] = MAX_DAYS_OLD
-
-ws_summary["A9"] = "Total Jobs Pulled"
-ws_summary["B9"] = len(jobs_list)
-
-ws_summary["A10"] = "Total Jobs After Filters"
-ws_summary["B10"] = len(filtered_jobs)
-
-ws_summary["A12"] = "Top Jobs"
-ws_summary["A13"] = "Rank"
-ws_summary["B13"] = "Title"
-ws_summary["C13"] = "Company"
-ws_summary["D13"] = "Job Score"
-ws_summary["E13"] = "Link"
-
-top_n = min(10, len(filtered_jobs))
-for i in range(top_n):
-    job = filtered_jobs[i]
-    r = 14 + i  # start row for top jobs list
-
-    ws_summary.cell(row=r, column=1, value=i + 1)
-    ws_summary.cell(row=r, column=2, value=str(job["title"]))
-    ws_summary.cell(row=r, column=3, value=str(job["company"]))
-    ws_summary.cell(row=r, column=4, value=job["job_score"])
-
-    link_cell = ws_summary.cell(row=r, column=5, value="View Job")
-    if job["url"] != "":
-        link_cell.hyperlink = job["url"]
-        link_cell.style = "Hyperlink"
-
-ws_summary.column_dimensions["A"].width = 10
-ws_summary.column_dimensions["B"].width = 55
-ws_summary.column_dimensions["C"].width = 25
-ws_summary.column_dimensions["D"].width = 15
-ws_summary.column_dimensions["E"].width = 15
 
 
 # Save workbook
