@@ -3,6 +3,8 @@ import json
 from openpyxl import Workbook
 from openpyxl.utils import get_column_letter
 from datetime import datetime, timezone
+from openpyxl.styles import Font, PatternFill, GradientFill, Alignment, Border, Side  
+# importing styles for formatting the excel output @jenny
 
 # Remotive Jobs API endpoint
 jobs_url = "https://remotive.com/api/remote-jobs"
@@ -11,6 +13,21 @@ jobs_url = "https://remotive.com/api/remote-jobs"
 KEYWORDS = ["python", "ai", "data"]          # keyword filter (case-insensitive)
 CATEGORY_FILTER = ""                         # Double check that this doesnt throw an error, example: "Software Development" (leave "" for no filter)
 MAX_DAYS_OLD = 30                            # recent posting filter (keep jobs posted within last N days)
+
+#User can enter in their own keywords
+user_keywords_input = input(
+    "Enter keywords (comma-separated), or press Enter to use defaults: "
+).strip()
+
+if user_keywords_input:
+    user_keywords = [
+        k.strip().lower()
+        for k in user_keywords_input.split(",")
+        if k.strip()
+    ]
+else:
+    user_keywords = KEYWORDS  # fallback to defaults
+
 
 # Scoring Weights (should add up to 1.0)
 WEIGHT_RECENCY = 0.50
@@ -32,11 +49,11 @@ OUTPUT_PATH = "./spreadsheets/remotive_jobs_scored.xlsx"
 
 #Concerting all dates to timezone.UTC to be able to calculation recency 
 def parse_iso_date(date_str):
-    """ 
-    Remotive publication_date is typically ISO 8601.
-    Example: "2024-07-30T10:21:11+00:00"
-    This returns a timezone-aware datetime, or None if it fails.
-    """
+ 
+#Remotive publication_date is typically ISO 8601.
+#Example: "2024-07-30T10:21:11+00:00"
+#This returns a timezone-aware datetime, or None if it fails.
+    
     if date_str is None or date_str == "":
         return None
 
@@ -50,10 +67,10 @@ def parse_iso_date(date_str):
 
 
 def days_since(posted_dt):
-    """
-    Returns the number of whole days since posted_dt.
-    If posted_dt is None, treat as old.
-    """
+    
+#Returns the number of whole days since posted_dt.
+#If posted_dt is None, treat as old.
+    
     if posted_dt is None:
         return 9999 #treating no date as super old
 
@@ -63,10 +80,10 @@ def days_since(posted_dt):
 
 
 def keyword_match_count(text, keywords):
-    """
-    Counts how many keywords appear in the text (case-insensitive).
-    Each keyword counts at most once.
-    """
+    
+#Counts how many keywords appear in the text (case-insensitive).
+#Each keyword counts at most once.
+    
     if text is None:
         text = ""
 #making case insensitive by converting keywords from API to lower case 
@@ -80,12 +97,12 @@ def keyword_match_count(text, keywords):
     return count
 
 def recency_score(days_old):
-    """
-    Recency rules:
-    - R = 1 when days_old = 0
-    - R = 0.5 when days_old = 7
-    - R = 0 when days_old > 7
-    """
+    
+#Recency rules:
+#- R = 1 when days_old = 0
+#- R = 0.5 when days_old = 7
+#- R = 0 when days_old > 7
+    
     if days_old > RECENCY_CUTOFF_DAYS:
         return 0
 
@@ -94,18 +111,18 @@ def recency_score(days_old):
 
 
 def keyword_score(match_count, total_keywords):
-    """
-    Normalizes keyword match count to 0-1.
-    """
+    
+#Normalizes keyword match count to 0-1.
+    
     if total_keywords == 0:
         return 0
     return match_count / total_keywords
 
 
 def salary_score(salary_value):
-    """
-    Salary presence score: 1 if salary exists, else 0.
-    """
+    
+#Salary presence score: 1 if salary exists, else 0.
+    
     if salary_value is None:
         return 0
     if isinstance(salary_value, str) and salary_value.strip() == "":
@@ -114,17 +131,17 @@ def salary_score(salary_value):
 
 
 def job_score(r, k, s):
-    """
-    Weighted score:
-    JobScore = WEIGHT_RECENCY*R + WEIGHT_KEYWORDS*K + WEIGHT_SALARY*S
-    """
+
+#Weighted score:
+#JobScore = WEIGHT_RECENCY*R + WEIGHT_KEYWORDS*K + WEIGHT_SALARY*S
+
     return (WEIGHT_RECENCY * r) + (WEIGHT_KEYWORDS * k) + (WEIGHT_SALARY * s)
 
 
 def passes_filters(job, keywords, category_filter, max_days_old):
-    """
-    Returns True if job passes keyword, category, and recency filters.
-    """
+
+#Returns True if job passes keyword, category, and recency filters.
+
     title = job.get("title", "")
     description = job.get("description", "")
     category = job.get("category", "")
@@ -132,18 +149,18 @@ def passes_filters(job, keywords, category_filter, max_days_old):
 
     text = f"{title} {description}"
 
-    # Keyword filter (if keywords provided)
+# Keyword filter (if keywords provided)
     if len(keywords) > 0:
         matches = keyword_match_count(text, keywords)
         if matches == 0:
             return False
 
-    # Category filter (if set)
+# Category filter (if set)
     if category_filter != "":
         if category != category_filter:
             return False
 
-    # Recency filter (keep jobs within last max_days_old days)
+# Recency filter (keep jobs within last max_days_old days)
     posted_dt = parse_iso_date(pub_date_str)
     d_old = days_since(posted_dt)
     if d_old > max_days_old:
@@ -152,9 +169,9 @@ def passes_filters(job, keywords, category_filter, max_days_old):
     return True
 
 
-# ----------------------------
+
 # API CALL + JSON PARSING
-# ----------------------------
+
 
 response = requests.get(jobs_url)
 print("STATUS CODE:", response.status_code)
@@ -166,14 +183,15 @@ jobs_list = data.get("jobs", [])
 print("Total jobs pulled from API:", len(jobs_list))
 
 
-# ----------------------------
+
 # FILTER + SCORE
-# ----------------------------
+
 
 filtered_jobs = []
 
 for job in jobs_list:
-    if passes_filters(job, KEYWORDS, CATEGORY_FILTER, MAX_DAYS_OLD):
+    # 1) pass user_keywords into the filter function
+    if passes_filters(job, user_keywords, CATEGORY_FILTER, MAX_DAYS_OLD):
         title = job.get("title", "")
         company = job.get("company_name", "")
         category = job.get("category", "")
@@ -186,12 +204,16 @@ for job in jobs_list:
         d_old = days_since(posted_dt)
 
         text = f"{title} {description}"
-        match_count = keyword_match_count(text, KEYWORDS)
+
+        # 2) use user_keywords for counting matches
+        match_count = keyword_match_count(text, user_keywords)
 
         r = recency_score(d_old)
-        k = keyword_score(match_count, len(KEYWORDS))
-        s = salary_score(salary)
 
+        # 3) use len(user_keywords) when normalizing the keyword score
+        k = keyword_score(match_count, len(user_keywords))
+
+        s = salary_score(salary)
         score = job_score(r, k, s)
 
         filtered_jobs.append({
@@ -211,20 +233,72 @@ for job in jobs_list:
 
 print("Total jobs after filters:", len(filtered_jobs))
 
-
 # Sort by job_score descending
 filtered_jobs.sort(key=lambda x: x["job_score"], reverse=True)
 # for each item x in the list, use its job score value as its sorting value
 
-# ----------------------------
 # EXCEL OUTPUT (OpenPyXL)
-# ----------------------------
-
 wb = Workbook()
 
 # Jobs sheet
 ws_jobs = wb.active
-ws_jobs.title = "Jobs"
+ws_jobs.title = "Filtered and Ranked Jobs"
+
+
+# All Jobs sheet (raw API data)
+
+ws_all = wb.create_sheet(title="All Jobs")
+
+# Build headers from ALL keys returned by API
+all_keys = set()
+for job in jobs_list:
+    all_keys.update(job.keys())
+
+all_headers = sorted(all_keys)
+
+# Write headers with styling @jenny
+for col, header in enumerate(all_headers, 1):
+    cell = ws_all.cell(row=1, column=col, value=header)
+    cell.font = Font(name="Calibri", bold=True, color="FFFFFF", size=12)  # @jenny
+    cell.fill = GradientFill(
+        type="linear",
+        degree=90,
+        stop=["FF0097A7", "FF004D40"]
+    )  # @jenny
+    cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)  # @jenny
+
+ws_all.freeze_panes = "A2"  # @jenny
+ws_all.auto_filter.ref = f"A1:{get_column_letter(len(all_headers))}{len(jobs_list)+1}"  # @jenny
+ws_all.row_dimensions[1].height = 20  # @jenny
+
+# Define alternating row colors @jenny
+ROW_COLORS_ALL = ["FFFFFFFF", "FFECEFF1"]  # @jenny
+
+# Write all raw jobs with alternating row styling @jenny
+for row_idx, job in enumerate(jobs_list, 2):
+
+    # Alternate row background @jenny
+    row_bg = ROW_COLORS_ALL[row_idx % 2]  # @jenny
+
+    for col_idx, key in enumerate(all_headers, 1):
+        value = job.get(key, "")
+
+        # Convert dict/list into JSON string so Excel can store it
+        if isinstance(value, (dict, list)):
+            value = json.dumps(value)
+
+        cell = ws_all.cell(row=row_idx, column=col_idx, value=value)
+
+        # Apply fill @jenny
+        cell.fill = PatternFill(start_color=row_bg, end_color=row_bg, fill_type="solid")  # @jenny
+        cell.alignment = Alignment(vertical="top", wrap_text=True)  # @jenny (optional but nice for long text)
+
+# Make it pretty: freeze header row
+ws_all.freeze_panes = "A2"
+
+# Make it pretty: simple column widths
+for col in range(1, len(all_headers) + 1):
+    ws_all.column_dimensions[get_column_letter(col)].width = 20
 
 headers = [
     "Title",
@@ -241,11 +315,48 @@ headers = [
     "Link"
 ]
 
-for col, header in enumerate(headers, 1):
-    ws_jobs.cell(row=1, column=col, value=header)
+# Original Header Loop - changing to add some styling to the header row @jenny
+# for col, header in enumerate(headers, 1):
+#     ws_jobs.cell(row=1, column=col, value=header)
 
-# Write job rows
+for col, header in enumerate(headers, 1):
+    cell = ws_jobs.cell(row=1, column=col, value=header)
+    cell.font = Font(name="Calibri", bold=True, color="FFFFFF", size=12)
+    cell.fill = GradientFill(
+        type="linear",
+        degree=90,
+        stop=["FF0097A7", "FF004D40"]
+    )
+    cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+
+ws_jobs.freeze_panes = "A2"
+ws_jobs.auto_filter.ref = f"A1:L{len(filtered_jobs)+1}"
+ws_jobs.row_dimensions[1].height = 20
+
+# Write job rows# Define alternating row colors @jenny
+ROW_COLORS = ["FFFFFF", "FFECEFF1"]
+
 for row, job in enumerate(filtered_jobs, 2):
+
+    rank = row - 1  # define rank @jenny
+
+    # Adding color for the top 10 list @jenny
+    if rank == 1:
+        row_bg = "FFFFD700"
+    elif rank == 2:
+        row_bg = "FFC0C0C0"
+    elif rank == 3:
+        row_bg = "FFCD7F32"
+    elif rank <= 10:
+        row_bg = "FFE0F7FA"
+    else:
+        row_bg = "FFECEFF1" if row % 2 == 0 else "FFFFFFFF"
+
+    # Apply fill to entire row @jenny
+    for col in range(1, len(headers) + 1):
+        cell = ws_jobs.cell(row=row, column=col)
+        cell.fill = PatternFill(start_color=row_bg, end_color=row_bg, fill_type="solid")
+
     ws_jobs.cell(row=row, column=1, value=str(job["title"]))
     ws_jobs.cell(row=row, column=2, value=str(job["company"]))
     ws_jobs.cell(row=row, column=3, value=str(job["category"]))
@@ -258,13 +369,24 @@ for row, job in enumerate(filtered_jobs, 2):
     ws_jobs.cell(row=row, column=10, value=job["salary_score"])
     ws_jobs.cell(row=row, column=11, value=job["job_score"])
 
-    # Make the links to the job listing actual hyperlinks
-url_value = job.get("url", "")
-link_cell = ws_jobs.cell(row=row, column=12, value=str(url_value))
+    # Define salary cell font @jenny
+    salary_cell = ws_jobs.cell(row=row, column=6)
+    if job["salary"]:
+        salary_cell.font = Font(bold=True, color="FF00695C")
 
-if url_value:
-    link_cell.hyperlink = url_value
-    link_cell.style = "Hyperlink"
+    # Hyperlink styled @jenny
+    link_cell = ws_jobs.cell(row=row, column=12, value="View Job")
+    if job["url"] != "":
+        link_cell.hyperlink = job["url"]
+        link_cell.style = "Hyperlink"
+
+# Make the links to the job listing actual hyperlinks, make sure its in the loop so it does it for all listings, not just the last!
+    url_value = job.get("url", "")
+    link_cell = ws_jobs.cell(row=row, column=12, value=str(url_value))
+
+    if url_value:
+        link_cell.hyperlink = url_value
+        link_cell.style = "Hyperlink"
 
 # Column widths (simple)
 for col in range(1, len(headers) + 1):
